@@ -48,5 +48,8 @@ go build
 ```
 
 3. Build and run the consumer
+
+```
 go build
 ./sparsnas_mqtt_consumer
+```
