@@ -1,0 +1,29 @@
+version: '3'
+services:
+  influxdb:
+    image: influxdb:1.7.7-alpine
+    ports:
+      - "127.0.0.1:8086:8086"
+    environment:
+      - INFLUXDB_ADMIN_ENABLED=true
+  grafana:
+    image: grafana/grafana:7.5.11
+    environment:
+      - GF_AUTH_ANONYMOUS_ENABLED=true
+      - GF_SERVER_ROOT_URL=%(protocol)s://%(domain)s:%(http_port)s/sparsnas
+      - GF_SERVER_SERVE_FROM_SUB_PATH=true
+    volumes:
+      - ${PWD}/grafana-datasources.yaml:/etc/grafana/provisioning/datasources/datasources.yaml
+      - ${PWD}/grafana-dashboards.yaml:/etc/grafana/provisioning/dashboards/dashboards.yaml
+      - ${PWD}/grafana-dashboard-sparsnasoverview.json:/var/lib/grafana/dashboards/sparsnasoverview.json
+      - ${PWD}/grafana-dashboard-sparsnasdetailedview.json:/var/lib/grafana/dashboards/sparsnasdetailedview.json
+    ports:
+      - "127.0.0.1:3000:3000"
+    depends_on:
+      - influxdb
+  mqtt:
+    image: eclipse-mosquitto:2.0-openssl
+    volumes:
+      - ${PWD}/mqtt-config:/mosquitto/config
+    ports:
+      - "127.0.0.1:1883:1883"
