@@ -7,12 +7,18 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"os"
 	"time"
 
 	mqtt "github.com/eclipse/paho.mqtt.golang"
 )
 
+const (
+	appName = "sparsnas_mqtt_consumer"
+)
+
 var (
+	version        string
 	influxForward  bool
 	influxAddr     string
 	influxDatabase string
@@ -51,13 +57,20 @@ func main() {
 	var broker string
 	var port int
 	var topic string
+	var verFlag bool
 	flag.BoolVar(&influxForward, "influx-forward", false, "forward messages to influx")
 	flag.StringVar(&influxAddr, "influx-addr", "http://localhost:8086", "address to influxdb for storing measurements")
 	flag.StringVar(&influxDatabase, "influx-db", "sparsnas", "name of the influx database")
 	flag.StringVar(&broker, "broker", "localhost", "IP to the MQTT broker")
 	flag.IntVar(&port, "port", 1883, "port to the MQTT broker")
 	flag.StringVar(&topic, "topic", "#", "topic to subscribe to")
+	flag.BoolVar(&verFlag, "version", false, "print version and exit")
 	flag.Parse()
+
+	if verFlag {
+		fmt.Printf("%s: version=%s\n", appName, version)
+		os.Exit(0)
+	}
 
 	if !influxForward {
 		log.Printf("Message forwarding to InfluxDB is not enabled. No measurements will be dispatached!")

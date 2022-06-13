@@ -28,6 +28,8 @@ Usage of ./sparsnas_mqtt_consumer:
      port to the MQTT broker (default 1883)
   -topic string
      topic to subscribe to (default "#")
+  -version
+     print version and exit
 ```
 
 ## Development
