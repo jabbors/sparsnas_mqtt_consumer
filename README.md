@@ -24,10 +24,14 @@ Usage of ./sparsnas_mqtt_consumer:
      name of the influx database (default "sparsnas")
   -influx-forward
      forward messages to influx
+  -pass string
+     password for MQTT broker
   -port int
      port to the MQTT broker (default 1883)
   -topic string
      topic to subscribe to (default "#")
+  -user string
+     username for MQTT broker
   -version
      print version and exit
 ```

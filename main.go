@@ -24,7 +24,7 @@ var (
 	influxDatabase string
 )
 
-func setupMqttClient(broker string, port int) (mqtt.Client, error) {
+func setupMqttClient(broker string, port int, username, password string) (mqtt.Client, error) {
 	var messagePubHandler mqtt.MessageHandler = func(client mqtt.Client, msg mqtt.Message) {
 		log.Printf("mqtt: received message from topic: %s", msg.Topic())
 	}
@@ -40,8 +40,8 @@ func setupMqttClient(broker string, port int) (mqtt.Client, error) {
 	opts := mqtt.NewClientOptions()
 	opts.AddBroker(fmt.Sprintf("tcp://%s:%d", broker, port))
 	opts.SetClientID(fmt.Sprintf("go_mqtt_client_%d", time.Now().Unix()))
-	// opts.SetUsername("")
-	// opts.SetPassword("")
+	opts.SetUsername(username)
+	opts.SetPassword(password)
 	opts.SetDefaultPublishHandler(messagePubHandler)
 	opts.OnConnect = connectHandler
 	opts.OnConnectionLost = connectLostHandler
@@ -56,6 +56,8 @@ func setupMqttClient(broker string, port int) (mqtt.Client, error) {
 func main() {
 	var broker string
 	var port int
+	var username string
+	var password string
 	var topic string
 	var verFlag bool
 	flag.BoolVar(&influxForward, "influx-forward", false, "forward messages to influx")
@@ -63,6 +65,8 @@ func main() {
 	flag.StringVar(&influxDatabase, "influx-db", "sparsnas", "name of the influx database")
 	flag.StringVar(&broker, "broker", "localhost", "IP to the MQTT broker")
 	flag.IntVar(&port, "port", 1883, "port to the MQTT broker")
+	flag.StringVar(&username, "user", "", "username for MQTT broker")
+	flag.StringVar(&password, "pass", "", "password for MQTT broker")
 	flag.StringVar(&topic, "topic", "#", "topic to subscribe to")
 	flag.BoolVar(&verFlag, "version", false, "print version and exit")
 	flag.Parse()
@@ -82,7 +86,7 @@ func main() {
 	measurementsCh := make(chan *Measurement, 10)
 	errorCh := make(chan error, 5)
 
-	client, err := setupMqttClient(broker, port)
+	client, err := setupMqttClient(broker, port, username, password)
 	if err != nil {
 		panic(err)
 	}
