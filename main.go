@@ -11,6 +11,7 @@ import (
 	"time"
 
 	mqtt "github.com/eclipse/paho.mqtt.golang"
+	"github.com/kelseyhightower/envconfig"
 )
 
 const (
@@ -18,11 +19,53 @@ const (
 )
 
 var (
-	version        string
-	influxForward  bool
-	influxAddr     string
-	influxDatabase string
+	version string
 )
+
+// appConfig represents the configuration.
+type appConfig struct {
+	MQTTBroker     string `default:"localhost" split_words:"true" desc:"IP or hostaname to the MQTT broker"`
+	MQTTPort       int    `default:"1883" split_words:"true" desc:"port to the MQTT broker"`
+	MQTTUsername   string `default:"" split_words:"true" desc:"username for MQTT broker"`
+	MQTTPassword   string `default:"" split_words:"true" desc:"password for MQTT broker"`
+	MQTTTopic      string `default:"#" split_words:"true", decs:"topic to subscribe to"`
+	InfluxAddr     string `default:"http://localhost:8086" split_words:"true" desc:"address to influxdb for storing measurements"`
+	InfluxDatabase string `default:"sparsnas" split_words:"true" desc:"name of the influx database"`
+	InfluxForward  bool   `default:"false" split_words:"true" desc:"forward messages to influx""`
+}
+
+// parse options from the environment. Return an error if parsing fails.
+func (a *appConfig) parse() {
+	defaultUsage := flag.Usage
+	flag.Usage = func() {
+		// Show default usage for the app (lists flags, etc).
+		defaultUsage()
+		fmt.Fprint(os.Stderr, "\n")
+
+		err := envconfig.Usage("", a)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "error: %s\n\n", err.Error())
+			os.Exit(1)
+		}
+	}
+
+	var verFlag bool
+	flag.BoolVar(&verFlag, "version", false, "print version and exit")
+	flag.Parse()
+
+	// Print version and exit if -version flag is passed.
+	if verFlag {
+		fmt.Printf("%s: version=%s\n", appName, version)
+		os.Exit(0)
+	}
+
+	err := envconfig.Process("", a)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "error: %s\n\n", err.Error())
+		flag.Usage()
+		os.Exit(1)
+	}
+}
 
 func setupMqttClient(broker string, port int, username, password string) (mqtt.Client, error) {
 	var messagePubHandler mqtt.MessageHandler = func(client mqtt.Client, msg mqtt.Message) {
@@ -54,32 +97,13 @@ func setupMqttClient(broker string, port int, username, password string) (mqtt.C
 }
 
 func main() {
-	var broker string
-	var port int
-	var username string
-	var password string
-	var topic string
-	var verFlag bool
-	flag.BoolVar(&influxForward, "influx-forward", false, "forward messages to influx")
-	flag.StringVar(&influxAddr, "influx-addr", "http://localhost:8086", "address to influxdb for storing measurements")
-	flag.StringVar(&influxDatabase, "influx-db", "sparsnas", "name of the influx database")
-	flag.StringVar(&broker, "broker", "localhost", "IP to the MQTT broker")
-	flag.IntVar(&port, "port", 1883, "port to the MQTT broker")
-	flag.StringVar(&username, "user", "", "username for MQTT broker")
-	flag.StringVar(&password, "pass", "", "password for MQTT broker")
-	flag.StringVar(&topic, "topic", "#", "topic to subscribe to")
-	flag.BoolVar(&verFlag, "version", false, "print version and exit")
-	flag.Parse()
+	config := &appConfig{}
+	config.parse()
 
-	if verFlag {
-		fmt.Printf("%s: version=%s\n", appName, version)
-		os.Exit(0)
-	}
-
-	if !influxForward {
+	if !config.InfluxForward {
 		log.Printf("Message forwarding to InfluxDB is not enabled. No measurements will be dispatached!")
 	} else {
-		resp, err := http.Get(fmt.Sprintf("%s/ping", influxAddr))
+		resp, err := http.Get(fmt.Sprintf("%s/ping", config.InfluxAddr))
 		if err != nil {
 			panic(err)
 		}
@@ -99,12 +123,12 @@ func main() {
 	measurementsCh := make(chan *Measurement, 10)
 	errorCh := make(chan error, 5)
 
-	client, err := setupMqttClient(broker, port, username, password)
+	client, err := setupMqttClient(config.MQTTBroker, config.MQTTPort, config.MQTTUsername, config.MQTTPassword)
 	if err != nil {
 		panic(err)
 	}
 
-	client.Subscribe(topic, 0, func(client mqtt.Client, msg mqtt.Message) {
+	client.Subscribe(config.MQTTTopic, 0, func(client mqtt.Client, msg mqtt.Message) {
 		log.Printf("mqtt: received message: %s from topic: %s\n", msg.Payload(), msg.Topic())
 
 		m, err := NewMeasurement(msg.Payload())
@@ -124,7 +148,7 @@ func main() {
 		case err := <-errorCh:
 			log.Println(err)
 		case m := <-measurementsCh:
-			if influxForward {
+			if config.InfluxForward {
 				log.Printf("influxdb: dispatching measurement")
 				buf := new(bytes.Buffer)
 				_, err := buf.WriteString(m.InfluxLineProtocol())
@@ -132,7 +156,7 @@ func main() {
 					log.Println("influxdb: failed to write line to buffer", err)
 					return
 				}
-				resp, err := http.Post(fmt.Sprintf("%s/write?db=%s", influxAddr, influxDatabase), "text/plain", buf)
+				resp, err := http.Post(fmt.Sprintf("%s/write?db=%s", config.InfluxAddr, config.InfluxDatabase), "text/plain", buf)
 				if err != nil {
 					log.Println("influxdb: failed to POST data:", err)
 					return
