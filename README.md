@@ -16,24 +16,21 @@ Runtime configuration flags
 
 ```
 Usage of ./sparsnas_mqtt_consumer:
-  -broker string
-     IP to the MQTT broker (default "localhost")
-  -influx-addr string
-     address to influxdb for storing measurements (default "http://localhost:8086")
-  -influx-db string
-     name of the influx database (default "sparsnas")
-  -influx-forward
-     forward messages to influx
-  -pass string
-     password for MQTT broker
-  -port int
-     port to the MQTT broker (default 1883)
-  -topic string
-     topic to subscribe to (default "#")
-  -user string
-     username for MQTT broker
   -version
      print version and exit
+
+This application is configured via the environment. The following environment
+variables can be used:
+
+KEY                TYPE             DEFAULT                  REQUIRED    DESCRIPTION
+MQTT_BROKER        String           localhost                            IP or hostaname to the MQTT broker
+MQTT_PORT          Integer          1883                                 port to the MQTT broker
+MQTT_USERNAME      String                                                username for MQTT broker
+MQTT_PASSWORD      String                                                password for MQTT broker
+MQTT_TOPIC         String           #
+INFLUX_ADDR        String           http://localhost:8086                address to influxdb for storing measurements
+INFLUX_DATABASE    String           sparsnas                             name of the influx database
+INFLUX_FORWARD     True or False    false                                forward messages to influx
 ```
 
 ## Development
