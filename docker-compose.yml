@@ -24,6 +24,6 @@ services:
   mqtt:
     image: eclipse-mosquitto:2.0-openssl
     volumes:
-      - ${PWD}/mqtt-config:/mosquitto/config
+      - ${PWD}/mosquitto.conf:/mosquitto/config/mosquitto.conf
     ports:
       - "127.0.0.1:1883:1883"
