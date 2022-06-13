@@ -79,7 +79,20 @@ func main() {
 	if !influxForward {
 		log.Printf("Message forwarding to InfluxDB is not enabled. No measurements will be dispatached!")
 	} else {
-		// TODO: check that we can connect to influx
+		resp, err := http.Get(fmt.Sprintf("%s/ping", influxAddr))
+		if err != nil {
+			panic(err)
+		}
+
+		if resp.StatusCode != http.StatusNoContent {
+			log.Printf("influxdb: unexpected return code, expected %d but got %d", http.StatusNoContent, resp.StatusCode)
+			reasons, err := ioutil.ReadAll(resp.Body)
+			if err != nil {
+				log.Println("influxdb: could not read response body")
+				return
+			}
+			log.Println("influxdb:", string(reasons))
+		}
 	}
 
 	// setup go channels for pipeing parsed measurements and errors from mqtt topic
